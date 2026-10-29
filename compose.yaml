@@ -1,0 +1,89 @@
+services:
+  api:
+    build:
+      context: .
+      target: api
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    volumes:
+      - .:/app
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      qdrant:
+        condition: service_started
+      minio:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+    environment:
+      QDRANT_HOST: ${QDRANT_HOST:-qdrant}
+      QDRANT_PORT: ${QDRANT_PORT:-6333}
+      QDRANT_GRPC_PORT: ${QDRANT_GRPC_PORT:-6333}
+      QDRANT_SCHEME: ${QDRANT_SCHEME:-http}
+      QDRANT_TIMEOUT_SECONDS: ${QDRANT_TIMEOUT_SECONDS:-10}
+      QDRANT_MAX_CONNECTIONS: ${QDRANT_MAX_CONNECTIONS:-100}
+      QDRANT_MAX_KEEPALIVE_CONNECTIONS: ${QDRANT_MAX_KEEPALIVE_CONNECTIONS:-20}
+      QDRANT_KEEPALIVE_EXPIRY_SECONDS: ${QDRANT_KEEPALIVE_EXPIRY_SECONDS:-5}
+      QDRANT_COLLECTION_NAME: ${QDRANT_COLLECTION_NAME:-pdf_chunks_minilm_l6_v2}
+      QDRANT_BATCH_SIZE: ${QDRANT_BATCH_SIZE:-64}
+      EMBEDDING_MODEL_NAME: ${EMBEDDING_MODEL_NAME:-sentence-transformers/all-MiniLM-L6-v2}
+      EMBEDDING_VECTOR_SIZE: ${EMBEDDING_VECTOR_SIZE:-384}
+      EMBEDDING_BATCH_SIZE: ${EMBEDDING_BATCH_SIZE:-32}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DATABASE: ${POSTGRES_DATABASE:?Set POSTGRES_DATABASE in .env}
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+      MINIO_SECURE: "false"
+      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME:-processed-pdfs}
+      MINIO_REGION: ${MINIO_REGION:-us-east-1}
+      MINIO_TIMEOUT_SECONDS: ${MINIO_TIMEOUT_SECONDS:-30}
+
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DATABASE:?Set POSTGRES_DATABASE in .env}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_storage:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    build:
+      context: .
+      dockerfile: Dockerfile.minio
+    command: ["server", "/data", "--console-address", ":9001"]
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - minio_storage:/data
+
+  qdrant:
+    image: qdrant/qdrant:v1.20.0
+    restart: unless-stopped
+    ports:
+      - "${QDRANT_PORT}:6333"
+      - "${QDRANT_GRPC_PORT}:6334"
+    volumes:
+      - qdrant_storage:/qdrant/storage
+
+volumes:
+  qdrant_storage:
+  minio_storage:
+  postgres_storage:

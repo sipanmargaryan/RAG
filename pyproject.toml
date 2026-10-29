@@ -1,0 +1,72 @@
+[project]
+name = "rag"
+version = "0.1.0"
+description = "FastAPI application for retrieval-augmented generation"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "pypdf>=6,<7",
+    "pypdfium2>=5,<6",
+    "pytesseract>=0.3.13,<0.4",
+    "pillow>=12,<13",
+    "sqlalchemy[asyncio]>=2.0.49,<3",
+    "asyncpg>=0.31,<1",
+    "alembic>=1.18,<2",
+    "fastapi>=0.115,<1",
+    "uvicorn>=0.34,<1",
+    "pydantic-settings>=2.10,<3",
+    "qdrant-client>=1.16,<2",
+    "httpx>=0.28,<1",
+    "langchain-text-splitters>=1.1.3",
+    "sentence-transformers>=6.2.0",
+    "python-multipart>=0.0.32",
+    "minio>=7.2.20",
+    "urllib3>=2.8.0",
+]
+
+[dependency-groups]
+dev = [
+    "testcontainers>=4.15,<5",
+    "anyio>=4,<5",
+    "pytest>=9.1.1",
+    "pytest-xdist>=3.8.0",
+    "ruff>=0.17.1",
+    "tox>=4.67.1",
+    "tox-uv>=1.37.0",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["."]
+pythonpath = ["."]
+addopts = "-ra --import-mode=importlib -m 'not integration'"
+markers = ["integration: tests using real services through Testcontainers"]
+
+# Ruff is used for linting and formatting.
+[tool.ruff]
+line-length = 88
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+# tox runs tests in parallel in an isolated Python 3.14 environment.
+[tool.tox]
+requires = ["tox>=4.67.1", "tox-uv>=1.37.0"]
+env_list = ["lint", "py314"]
+
+[tool.tox.env_run_base]
+runner = "uv-venv-lock-runner"
+dependency_groups = ["dev"]
+pass_env = ["DOCKER_*", "TESTCONTAINERS_*", "RYUK_*"]
+package = "skip"
+commands = [["pytest", "-n", "auto", { replace = "posargs", extend = true }]]
+
+[tool.tox.env.lint]
+package = "skip"
+commands = [["ruff", "check", "."], ["ruff", "format", "--check", "."]]
+
+[tool.tox.env.integration]
+commands = [["pytest", "-m", "integration", "-n", "auto", { replace = "posargs", extend = true }]]
