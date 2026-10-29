@@ -8,25 +8,33 @@ UV ?= uv
 
 help:
 	@printf '%s\n' \
-	  'make hooks         Enable Git hooks from .githooks for this clone' \
-	  'make build         Build the API image' \
-	  'make up            Start the API and Qdrant' \
-	  'make down          Stop containers and keep database storage' \
-	  'make logs          Follow container logs' \
-	  'make ps            Show container status' \
-	  'make config        Validate Docker Compose configuration' \
-	  'make migrate       Apply Alembic migrations to PostgreSQL' \
-	  'make migration     Generate a migration; ARGS="-m description"' \
-	  'make migration-check Check database schema against ORM models' \
-	  'make qdrant-migrate Create or migrate the Qdrant collection' \
-	  'make qdrant-migration-check Validate the Qdrant collection schema' \
-	  'make lint          Run Ruff lint checks' \
-	  'make format-check  Check Python formatting' \
-	  'make format        Format source files on the host using the container' \
-	  'make test          Run unit tests without a database; accepts ARGS="..."' \
-	  'make integration   Run Testcontainers tests on the host (requires uv and Docker)' \
-	  'make check         Validate Compose and run tox; accepts ARGS="..."' \
-	  'make shell         Open a shell in the api container'
+	  'Commands:' \
+	  'make help                     List all Make commands' \
+	  'make build                    Build the API image' \
+	  'make up                       Start all services' \
+	  'make down                     Stop containers and keep stored data' \
+	  'make logs                     Follow container logs' \
+	  'make ps                       Show container status' \
+	  'make config                   Validate Docker Compose configuration' \
+	  'make lint                     Run Ruff lint checks' \
+	  'make format-check             Check Python formatting' \
+	  'make format                   Format source files on the host using the container' \
+	  'make test                     Run unit tests without a database; accepts ARGS="..."' \
+	  'make integration              Run Testcontainers tests on the host (requires uv and Docker)' \
+	  'make check                    Validate Compose and run tox; accepts ARGS="..."' \
+	  'make shell                    Open a shell in the API container' \
+	  '' \
+	  'Git hooks:' \
+	  'make hooks                    Enable Git hooks from .githooks for this clone' \
+	  '' \
+	  'Database migrations:' \
+	  'make migration                Generate a migration; ARGS="-m description"' \
+	  'make migrate                  Apply Alembic migrations to PostgreSQL' \
+	  'make migration-check          Check database schema against ORM models' \
+	  '' \
+	  'Qdrant migrations:' \
+	  'make qdrant-migrate           Create or migrate the Qdrant collection' \
+	  'make qdrant-migration-check   Validate the Qdrant collection schema'
 
 hooks:
 	git config --local core.hooksPath .githooks
