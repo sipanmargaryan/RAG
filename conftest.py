@@ -20,7 +20,9 @@ from app.db import postgres, qdrant
 from app.db.postgres import Base, get_session
 from app.helpers import minio
 from app.main import app
-from app.routers.rag import service
+from app.routers.rag.schemas.api import RAGResult, RAGSource
+from app.routers.rag.services import rag as service
+from app.routers.rag.services.answer_generation import NO_CONTEXT_ANSWER
 
 
 @pytest.hookimpl(tryfirst=True)
@@ -68,6 +70,29 @@ def mock_embeddings(monkeypatch: pytest.MonkeyPatch) -> Mock:
 
 
 @pytest.fixture(autouse=True)
+def mock_reranking(monkeypatch: pytest.MonkeyPatch) -> Mock:
+    reranker = Mock(side_effect=lambda query, chunks: chunks[:5])
+    monkeypatch.setattr(service, "rerank_chunks", reranker)
+    return reranker
+
+
+@pytest.fixture(autouse=True)
+def mock_answer_generation(monkeypatch: pytest.MonkeyPatch) -> AsyncMock:
+    def answer(query, chunks):
+        return RAGResult(
+            answer="Mock RAG answer" if chunks else NO_CONTEXT_ANSWER,
+            sources=[
+                RAGSource(source_id=index, **chunk.model_dump())
+                for index, chunk in enumerate(chunks, start=1)
+            ],
+        )
+
+    generator = AsyncMock(side_effect=answer)
+    monkeypatch.setattr(service, "generate_rag_answer", generator)
+    return generator
+
+
+@pytest.fixture(autouse=True)
 def mock_minio(monkeypatch: pytest.MonkeyPatch) -> Mock:
     client = Mock(spec=Minio)
     client.bucket_exists.return_value = True
@@ -89,6 +114,7 @@ def mock_qdrant(monkeypatch: pytest.MonkeyPatch) -> AsyncMock:
     client.upsert.return_value = result
     client.delete.return_value = result
     client.query_points.return_value = QueryResponse(points=[])
+    client.query_batch_points.return_value = [QueryResponse(points=[])] * 5
     monkeypatch.setattr(qdrant, "qdrant_client", client)
     return client
 

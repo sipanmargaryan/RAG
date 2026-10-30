@@ -1,5 +1,4 @@
 import logging
-from dataclasses import dataclass
 from pathlib import Path
 from shutil import copyfileobj
 from tempfile import TemporaryDirectory
@@ -14,7 +13,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.concurrency import run_in_threadpool
 
 from app.config import settings
-from app.helpers.embeddings import embed_texts
 from app.helpers.exceptions import (
     DatabaseError,
     InvalidPDFError,
@@ -26,7 +24,12 @@ from app.helpers.processing import chunk_texts
 from app.helpers.utils import _read_pdf
 from app.routers.rag.models import PDFDocument
 from app.routers.rag.repository import pdf_document_repository
-from app.routers.rag.schemas import ChunkSearchResult
+from app.routers.rag.schemas.api import ChunkSearchResult, RAGResult
+from app.routers.rag.schemas.pdf import ProcessedPDF
+from app.routers.rag.services.answer_generation import generate_rag_answer
+from app.routers.rag.services.embeddings import embed_texts
+from app.routers.rag.services.query_expansion import expand_query
+from app.routers.rag.services.reranking import rerank_chunks
 from app.routers.rag.vector_repository import (
     remove_document_chunks,
     save_document_chunks,
@@ -36,31 +39,32 @@ from app.routers.rag.vector_repository import (
 logger = logging.getLogger(__name__)
 
 
+async def create_rag_answer(text: str, qdrant: AsyncQdrantClient) -> RAGResult:
+    chunks = await search_pdf_chunks(text, qdrant)
+    return await generate_rag_answer(text, chunks)
+
+
 async def search_pdf_chunks(
     text: str, qdrant: AsyncQdrantClient
 ) -> list[ChunkSearchResult]:
-    """Embed search text in a worker and return the nearest stored PDF chunks."""
-    vectors = await run_in_threadpool(embed_texts, [text])
-    points = await search_chunks(qdrant, vectors[0])
+    """Retrieve five chunks per query, deduplicate, and rerank to the top five."""
+    queries = await expand_query(text)
+    vectors = await run_in_threadpool(embed_texts, queries)
+    points = await search_chunks(qdrant, vectors)
+    unique_points = {}
+    for point in points:
+        unique_points.setdefault(point.id, point)
     try:
-        return [
+        chunks = [
             ChunkSearchResult.model_validate(
                 {**(point.payload or {}), "score": point.score}
             )
-            for point in points
+            for point in unique_points.values()
         ]
     except ValidationError as exc:
         logger.exception("Qdrant search returned invalid chunk metadata")
         raise VectorStorageError("Stored search results could not be read") from exc
-
-
-@dataclass(frozen=True)
-class ProcessedPDF:
-    bucket_name: str
-    object_key: str
-    page_count: int
-    chunks: list[str]
-    vectors: list[list[float]]
+    return await run_in_threadpool(rerank_chunks, text, chunks)
 
 
 def process_pdf(stream: BinaryIO, storage: Minio) -> ProcessedPDF:

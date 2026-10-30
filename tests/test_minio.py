@@ -68,7 +68,7 @@ def test_bucket_owned_by_someone_else_is_not_ignored(tmp_path):
 @pytest.mark.anyio
 async def test_storage_failure_returns_503(client, monkeypatch, mock_minio):
     from app.helpers.utils import PDFPage
-    from app.routers.rag import service
+    from app.routers.rag.services import rag as service
 
     paths = []
 
@@ -98,7 +98,7 @@ async def test_tokenization_failure_does_not_store_pdf(client, monkeypatch, mock
 
     from app.helpers.utils import PDFPage
     from app.main import app
-    from app.routers.rag import service
+    from app.routers.rag.services import rag as service
 
     monkeypatch.setattr(
         service, "_read_pdf", Mock(return_value=[PDFPage(1, "PDF text", False)])

@@ -19,31 +19,38 @@ _CLIENT_ERRORS = (
 
 
 async def search_chunks(
-    client: AsyncQdrantClient, vector: list[float]
+    client: AsyncQdrantClient, vectors: list[list[float]]
 ) -> list[models.ScoredPoint]:
-    """Return up to five nearest chunks without returning their vectors."""
+    """Return up to five chunks per query, preserving query order and overlaps."""
     try:
-        result = await client.query_points(
+        results = await client.query_batch_points(
             collection_name=settings.qdrant.collection_name,
-            query=vector,
-            query_filter=models.Filter(
-                must=[
-                    models.FieldCondition(
-                        key="embedding_model",
-                        match=models.MatchValue(value=settings.embedding.model_name),
-                    )
-                ]
-            ),
-            limit=5,
-            with_payload=True,
-            with_vectors=False,
+            requests=[
+                models.QueryRequest(
+                    query=vector,
+                    filter=models.Filter(
+                        must=[
+                            models.FieldCondition(
+                                key="embedding_model",
+                                match=models.MatchValue(
+                                    value=settings.embedding.model_name
+                                ),
+                            )
+                        ]
+                    ),
+                    limit=5,
+                    with_payload=True,
+                    with_vector=False,
+                )
+                for vector in vectors
+            ],
         )
     except _CLIENT_ERRORS as exc:
         logger.exception("Failed to search PDF chunks in Qdrant")
         raise VectorStorageError(
             "Vector search is unavailable; please retry later"
         ) from exc
-    return result.points[:5]
+    return [point for result in results for point in result.points[:5]]
 
 
 async def save_document_chunks(

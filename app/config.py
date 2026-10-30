@@ -40,6 +40,66 @@ class EmbeddingSettings(BaseSettings):
     batch_size: int = Field(default=32, gt=0)
 
 
+class RerankingSettings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_prefix="RERANKING_", env_file=".env", extra="ignore"
+    )
+
+    model_name: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    batch_size: int = Field(default=16, gt=0)
+
+
+class OpenAISettings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_prefix="OPENAI_", env_file=".env", extra="ignore"
+    )
+
+    api_key: SecretStr | None = Field(default=None, repr=False)
+    model: str = "gpt-4.1-mini"
+    timeout_seconds: float = Field(default=30, gt=0)
+
+
+class GeminiSettings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_prefix="GEMINI_", env_file=".env", extra="ignore"
+    )
+
+    api_key: SecretStr | None = Field(default=None, repr=False)
+    model: str = "gemini-3.8-flash"
+    timeout_seconds: float = Field(default=30, gt=0)
+    max_retries: int = Field(default=2, ge=0, le=5)
+
+
+class ClaudeSettings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_prefix="CLAUDE_", env_file=".env", extra="ignore"
+    )
+
+    api_key: SecretStr | None = Field(default=None, repr=False)
+    model: str = "claude-haiku-5-5"
+    api_version: str = "2026-10-21"
+    workspace_id: str | None = None
+    timeout_seconds: float = Field(default=60, gt=0)
+    max_retries: int = Field(default=2, ge=0, le=5)
+
+
+class QueryExpansionSettings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_prefix="QUERY_EXPANSION_", env_file=".env", extra="ignore"
+    )
+
+    provider: Literal["openai", "gemini", "claude"]
+
+
+class AnswerGenerationSettings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_prefix="ANSWER_", env_file=".env", extra="ignore"
+    )
+
+    provider: Literal["openai", "gemini", "claude"]
+    max_output_tokens: int = Field(default=2048, gt=0)
+
+
 class MinioSettings(BaseSettings):
     """Object storage settings; default credentials are for local development."""
 
@@ -91,6 +151,14 @@ class AppSettings(BaseModel):
     database: DatabaseSettings = Field(default_factory=DatabaseSettings)
     minio: MinioSettings = Field(default_factory=MinioSettings)
     embedding: EmbeddingSettings = Field(default_factory=EmbeddingSettings)
+    reranking: RerankingSettings = Field(default_factory=RerankingSettings)
+    openai: OpenAISettings = Field(default_factory=OpenAISettings)
+    gemini: GeminiSettings = Field(default_factory=GeminiSettings)
+    claude: ClaudeSettings = Field(default_factory=ClaudeSettings)
+    query_expansion: QueryExpansionSettings = Field(
+        default_factory=QueryExpansionSettings
+    )
+    answer: AnswerGenerationSettings = Field(default_factory=AnswerGenerationSettings)
 
 
 settings = AppSettings()

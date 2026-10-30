@@ -1,7 +1,6 @@
-"""Generate dense embeddings in a worker thread using a cached local model."""
+"""Generate RAG embeddings in a worker thread using a cached local model."""
 
 import logging
-from functools import cache
 from math import isfinite
 from threading import Lock
 
@@ -11,12 +10,17 @@ from app.config import settings
 from app.helpers.exceptions import EmbeddingError
 
 logger = logging.getLogger(__name__)
-_model_lock = Lock()
+_initialization_lock = Lock()
+_model: SentenceTransformer | None = None
 
 
-@cache
 def _get_model() -> SentenceTransformer:
-    return SentenceTransformer(settings.embedding.model_name)
+    global _model
+    if _model is None:
+        with _initialization_lock:
+            if _model is None:
+                _model = SentenceTransformer(settings.embedding.model_name)
+    return _model
 
 
 def embed_texts(texts: list[str]) -> list[list[float]]:
@@ -24,19 +28,17 @@ def embed_texts(texts: list[str]) -> list[list[float]]:
     if not texts:
         return []
     try:
-        # Serialize initialization and inference across request worker threads.
-        with _model_lock:
-            vectors = (
-                _get_model()
-                .encode(
-                    texts,
-                    batch_size=settings.embedding.batch_size,
-                    normalize_embeddings=True,
-                    convert_to_numpy=True,
-                    show_progress_bar=False,
-                )
-                .tolist()
+        vectors = (
+            _get_model()
+            .encode(
+                texts,
+                batch_size=settings.embedding.batch_size,
+                normalize_embeddings=True,
+                convert_to_numpy=True,
+                show_progress_bar=False,
             )
+            .tolist()
+        )
         if len(vectors) != len(texts) or any(
             len(vector) != settings.embedding.vector_size
             or not all(isfinite(value) for value in vector)

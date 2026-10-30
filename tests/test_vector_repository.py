@@ -9,8 +9,8 @@ from app.config import settings
 from app.helpers.exceptions import VectorStorageError
 from app.helpers.utils import PDFPage
 from app.migrations.qdrant import migrate_collection
-from app.routers.rag import service
 from app.routers.rag.models import PDFDocument
+from app.routers.rag.services import rag as service
 from app.routers.rag.vector_repository import (
     remove_document_chunks,
     save_document_chunks,

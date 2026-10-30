@@ -1,4 +1,4 @@
-"""Application errors, shared HTTP handlers, and OpenAPI error responses."""
+"""Application errors and shared HTTP exception handlers."""
 
 import logging
 
@@ -36,6 +36,22 @@ class VectorStorageError(AppError):
 
 
 class EmbeddingError(AppError):
+    status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+
+
+class QueryExpansionError(AppError):
+    status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+
+
+class RerankingError(AppError):
+    status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+
+
+class ProviderError(AppError):
+    status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+
+
+class AnswerGenerationError(AppError):
     status_code = status.HTTP_503_SERVICE_UNAVAILABLE
 
 
@@ -81,60 +97,3 @@ def register_exception_handlers(app: FastAPI) -> None:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=APIResponse[None](message="Internal server error").model_dump(),
         )
-
-
-ERROR_RESPONSES = {
-    422: {
-        "model": APIResponse[object],
-        "description": "Request validation failed or the PDF cannot be processed.",
-        "content": {
-            "application/json": {
-                "examples": {
-                    "invalid_pdf": {
-                        "summary": "File is not a PDF",
-                        "value": {
-                            "message": "Upload must contain a PDF file",
-                            "data": None,
-                        },
-                    },
-                    "missing_file": {
-                        "summary": "Required upload is missing",
-                        "value": {
-                            "message": "Request validation failed",
-                            "data": {
-                                "errors": [
-                                    {
-                                        "type": "missing",
-                                        "loc": ["body", "file"],
-                                        "msg": "Field required",
-                                    }
-                                ]
-                            },
-                        },
-                    },
-                }
-            }
-        },
-    },
-    503: {
-        "model": APIResponse[None],
-        "description": "PDF, metadata, embedding, or vector storage is unavailable.",
-        "content": {
-            "application/json": {
-                "example": {
-                    "message": "PDF storage is unavailable; please retry later",
-                    "data": None,
-                }
-            }
-        },
-    },
-    500: {
-        "model": APIResponse[None],
-        "description": "Unexpected processing or server failure.",
-        "content": {
-            "application/json": {
-                "example": {"message": "Internal server error", "data": None}
-            }
-        },
-    },
-}

@@ -7,8 +7,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from urllib3.exceptions import HTTPError
 
 from app.helpers.utils import PDFPage
-from app.routers.rag import service
 from app.routers.rag.models import PDFDocument
+from app.routers.rag.services import rag as service
 
 
 @pytest.fixture

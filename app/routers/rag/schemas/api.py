@@ -11,9 +11,18 @@ class ChunkSearchRequest(BaseModel):
 
 class ChunkSearchResult(BaseModel):
     text: str
-    score: float
+    score: float = Field(description="CrossEncoder relevance score; higher is better.")
     document_id: int
     chunk_index: int
     original_filename: str | None = None
     bucket_name: str
     object_key: str
+
+
+class RAGSource(ChunkSearchResult):
+    source_id: int = Field(ge=1)
+
+
+class RAGResult(BaseModel):
+    answer: str
+    sources: list[RAGSource]

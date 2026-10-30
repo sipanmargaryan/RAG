@@ -4,7 +4,7 @@ from unittest.mock import Mock
 import pytest
 
 from app.helpers.utils import PDFPage
-from app.routers.rag import service
+from app.routers.rag.services import rag as service
 
 
 @pytest.mark.anyio

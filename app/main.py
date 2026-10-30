@@ -26,7 +26,8 @@ app = FastAPI(
         "Successfully processed PDFs are stored in MinIO. "
         "Chunk text and MiniLM embeddings are indexed in Qdrant and linked "
         "to PostgreSQL document metadata. "
-        "Search stored chunks by text to retrieve up to five relevant matches. "
+        "Search the original text and four variations, then rerank unique matches "
+        "to select up to five relevant chunks and generate an answer with sources. "
         "All responses contain a message and optional data."
     ),
     docs_url="/docs",
